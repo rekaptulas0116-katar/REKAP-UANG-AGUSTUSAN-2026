@@ -1,1 +1,300 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Rekap Uang Penagihan Agustusan RT 001/RW016</title>
+<style>
+  body { font-family: Arial, sans-serif; background:#eef1f5; margin:0; padding:0; }
+  header { background:#3b82f6; color:#fff; padding:20px; text-align:center; font-size:26px; font-weight:bold; }
+  .container { padding:20px; max-width:1100px; margin:auto; }
+  .dashboard-box { display:flex; gap:20px; margin-bottom:20px; }
+  .card { flex:1; background:white; padding:20px; border-radius:14px; box-shadow:0 4px 10px rgba(0,0,0,0.1); text-align:center; }
+  .card h3 { margin:0 0 10px 0; font-size:18px; color:#555; }
+  .card .value { font-size:30px; font-weight:bold; color:#111; }
+  .panel { background:#fff; padding:20px; border-radius:14px; margin-bottom:20px; box-shadow:0 4px 10px rgba(0,0,0,0.1); }
+  input, select, button { padding:10px; margin:5px 0; width:100%; border-radius:6px; border:1px solid #ccc; font-size:15px; }
+  table { width:100%; border-collapse:collapse; margin-top:20px; font-size:15px; }
+  th, td { border:1px solid #ccc; padding:10px; text-align:left; }
+  th { background:#f0f0f0; }
+  .btn { background:#3b82f6; color:white; cursor:pointer; font-weight:bold; }
+  .btn:hover { opacity:0.9; }
+  .btn-red { background:#d9534f; color:white; }
+  .search-box input { width:100%; padding:10px; border-radius:8px; border:1px solid #aaa; }
+</style>
+</head>
+<body>
+<header>Rekap Uang Penagihan Agustusan RT001/RW016</header>
+<div class="container">
+
+<!-- Dashboard Global -->
+<div class="dashboard-box">
+  <div class="card">
+    <h3>Total Anggota</h3>
+    <div class="value" id="totalAnggota">0</div>
+  </div>
+  <div class="card">
+    <h3>Total Transaksi</h3>
+    <div class="value" id="totalTransaksi">0</div>
+  </div>
+  <div class="card">
+    <h3>Total Saldo Keseluruhan</h3>
+    <div class="value" id="totalGlobalSaldo">Rp0</div>
+  </div>
+</div>
+
+<!-- Panel Tambah Anggota -->
+<div class="panel">
+  <h2>Tambah Warga / Anggota</h2>
+  <input type="text" id="namaBaru" placeholder="Nama Warga"> 
+  <input type="number" id="nominalAwal" placeholder="Nominal Awal"> 
+  <label>Tanggal Input:</label>
+  <input type="date" id="tanggalAwal">
+  <button class="btn" onclick="tambahAnggota()">Tambah</button>
+</div>
+
+<!-- Panel Penagihan -->
+<div class="panel">
+  <h2>Panel Penagihan</h2>
+  <div class="search-box">
+    <input type="text" id="cariNama" placeholder="Cari nama anggota..." onkeyup="filterNama()">
+  </div>
+  <select id="pilihAnggota"></select>
+  <select id="jenisIuran">
+    <option value="Setoran Awal">Setoran Awal</option>
+    <option value="November">Iuran November</option>
+    <option value="Desember">Iuran Desember</option>
+    <option value="Januari">Iuran Januari</option>
+    <option value="Februari">Iuran Februari</option>
+    <option value="Maret">Iuran Maret</option>
+    <option value="April">Iuran April</option>
+    <option value="Mei">Iuran Mei</option>
+    <option value="Juni">Iuran Juni</option>
+    <option value="Juli">Iuran Juli</option>
+    <option value="Agustus">Iuran Agustus</option>
+  </select>
+  <input type="number" id="nominalTransaksi" placeholder="Nominal"> 
+  <label>Tanggal Transaksi:</label>
+  <input type="date" id="tanggalTransaksi"> 
+  <button class="btn" onclick="tambahSaldo()">Tambah Setoran</button>
+  <button class="btn btn-red" onclick="kurangiSaldo()">Kurangi</button>
+</div>
+
+<!-- Export / Import -->
+<div class="panel">
+  <h2>Backup / Restore Data</h2>
+  <button class="btn" onclick="exportExcel()">Export ke Excel</button>
+  <input type="file" id="fileImport" onchange="importExcel(event)">
+</div>
+
+<!-- Tabel Rekap -->
+<div class="panel">
+  <h2>Laporan Penagihan</h2>
+  <table id="tabelRekap">
+    <thead>
+      <tr>
+        <th>Nama</th>
+        <th>Nominal</th>
+        <th>Jenis</th>
+        <th>Tanggal</th>
+        <th>Aksi</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<!-- Tabel Total Saldo Per Anggota -->
+<div class="panel">
+  <h2>Total Saldo Per Anggota</h2>
+  <table id="tabelTotalSaldo">
+    <thead>
+      <tr><th>Nama</th><th>Total Saldo</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<!-- Summary Bulanan -->
+<div class="panel">
+  <h2>Summary Bulanan Per Anggota</h2>
+  <table id="tabelSummaryBulanan">
+    <thead>
+      <tr>
+        <th>Nama</th>
+        <th>Nov</th><th>Des</th><th>Jan</th><th>Feb</th>
+        <th>Mar</th><th>Apr</th><th>Mei</th><th>Jun</th>
+        <th>Jul</th><th>Ags</th><th>Total</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+let anggota = [];
+let transaksi = [];
+
+// ======= Format Rupiah =======
+function formatRupiah(number){
+  return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(number);
+}
+
+// ======= LocalStorage =======
+function simpanLocalStorage(){
+  localStorage.setItem('anggota', JSON.stringify(anggota));
+  localStorage.setItem('transaksi', JSON.stringify(transaksi));
+}
+function loadLocalStorage(){
+  const dataAnggota = JSON.parse(localStorage.getItem('anggota'));
+  const dataTransaksi = JSON.parse(localStorage.getItem('transaksi'));
+  if(dataAnggota) anggota = dataAnggota;
+  if(dataTransaksi) transaksi = dataTransaksi;
+  refreshDropdown(); updateAll();
+}
+
+// ======= Dropdown & Filter =======
+function refreshDropdown(){
+  const pilih = document.getElementById('pilihAnggota');
+  pilih.innerHTML = '';
+  anggota.forEach(a => pilih.innerHTML += `<option value="${a}">${a}</option>`);
+}
+function filterNama(){
+  const keyword = document.getElementById('cariNama').value.toLowerCase();
+  const pilih = document.getElementById('pilihAnggota');
+  pilih.innerHTML = '';
+  anggota.filter(a => a.toLowerCase().includes(keyword)).forEach(n => pilih.innerHTML += `<option value="${n}">${n}</option>`);
+}
+
+// ======= Tambah & Kurangi Saldo =======
+function tambahAnggota(){
+  const nama = document.getElementById('namaBaru').value;
+  const nominal = parseInt(document.getElementById('nominalAwal').value);
+  const tanggal = document.getElementById('tanggalAwal').value || new Date().toISOString().split('T')[0];
+  if(!nama || isNaN(nominal)) return alert('Lengkapi semua data!');
+  if(anggota.includes(nama)) return alert('Nama anggota sudah ada!');
+  anggota.push(nama);
+  transaksi.push({nama, nominal, jenis:'Setoran Awal', tanggal});
+  simpanLocalStorage();
+  refreshDropdown(); updateAll();
+  document.getElementById('namaBaru').value=''; document.getElementById('nominalAwal').value='';
+}
+function tambahSaldo(){
+  const nama = document.getElementById('pilihAnggota').value;
+  const nominal = parseInt(document.getElementById('nominalTransaksi').value);
+  const jenis = document.getElementById('jenisIuran').value;
+  const tanggal = document.getElementById('tanggalTransaksi').value || new Date().toISOString().split('T')[0];
+  if(!nama || isNaN(nominal)) return alert('Nominal tidak valid');
+  transaksi.push({nama, nominal, jenis, tanggal});
+  simpanLocalStorage(); updateAll();
+  document.getElementById('nominalTransaksi').value='';
+}
+function kurangiSaldo(){
+  const nama = document.getElementById('pilihAnggota').value;
+  const nominal = parseInt(document.getElementById('nominalTransaksi').value);
+  const tanggal = document.getElementById('tanggalTransaksi').value || new Date().toISOString().split('T')[0];
+  if(!nama || isNaN(nominal)) return alert('Nominal tidak valid');
+  transaksi.push({nama, nominal: -Math.abs(nominal), jenis:'Pengurangan', tanggal});
+  simpanLocalStorage(); updateAll();
+  document.getElementById('nominalTransaksi').value='';
+}
+
+// ======= Update Tables =======
+function updateTable(){
+  const tbody = document.querySelector('#tabelRekap tbody');
+  tbody.innerHTML = '';
+  transaksi.forEach((t, index) => {
+    tbody.innerHTML += `<tr>
+      <td>${t.nama}</td>
+      <td id="nominal-${index}">${formatRupiah(t.nominal)}</td>
+      <td id="jenis-${index}">${t.jenis}</td>
+      <td id="tanggal-${index}">${t.tanggal}</td>
+      <td id="aksi-${index}">
+        <button class="btn" onclick="editRow(${index})">Edit</button>
+        <button class="btn btn-red" onclick="hapusTransaksi(${index})">Hapus</button>
+      </td>
+    </tr>`;
+  });
+}
+function hapusTransaksi(index){
+  if(confirm('Apakah yakin ingin menghapus transaksi ini?')){
+    transaksi.splice(index,1);
+    simpanLocalStorage(); updateAll();
+  }
+}
+function editRow(index){
+  const nominalCell = document.getElementById(`nominal-${index}`);
+  const jenisCell = document.getElementById(`jenis-${index}`);
+  const tanggalCell = document.getElementById(`tanggal-${index}`);
+  const aksiCell = document.getElementById(`aksi-${index}`);
+  nominalCell.innerHTML = `<input type="number" id="editNominal-${index}" value="${transaksi[index].nominal}">`;
+  const jenisOptions = ['Setoran Awal','November','Desember','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus'];
+  let jenisSelect = `<select id="editJenis-${index}">`;
+  jenisOptions.forEach(j => jenisSelect += `<option value="${j}" ${j===transaksi[index].jenis?'selected':''}>${j}</option>`);
+  jenisSelect += `</select>`;
+  jenisCell.innerHTML = jenisSelect;
+  tanggalCell.innerHTML = `<input type="date" id="editTanggal-${index}" value="${transaksi[index].tanggal}">`;
+  aksiCell.innerHTML = `<button class="btn" onclick="simpanEdit(${index})">Simpan</button>
+                        <button class="btn btn-red" onclick="batalEdit(${index})">Batal</button>`;
+}
+function simpanEdit(index){
+  const newNominal = parseInt(document.getElementById(`editNominal-${index}`).value);
+  const newJenis = document.getElementById(`editJenis-${index}`).value;
+  const newTanggal = document.getElementById(`editTanggal-${index}`).value;
+  if(isNaN(newNominal) || !newJenis || !newTanggal) return alert('Data tidak valid!');
+  transaksi[index].nominal=newNominal; transaksi[index].jenis=newJenis; transaksi[index].tanggal=newTanggal;
+  simpanLocalStorage(); updateAll();
+}
+function batalEdit(){ updateAll(); }
+
+// ======= Update Saldo & Summary =======
+function updateTotalSaldo(){
+  let totalMap={}; anggota.forEach(n=>totalMap[n]=0); transaksi.forEach(t=>totalMap[t.nama]+=t.nominal);
+  const tbody=document.querySelector('#tabelTotalSaldo tbody'); tbody.innerHTML='';
+  Object.keys(totalMap).forEach(nama=>tbody.innerHTML+=`<tr><td>${nama}</td><td>${formatRupiah(totalMap[nama])}</td></tr>`);
+  document.getElementById('totalGlobalSaldo').innerText=formatRupiah(Object.values(totalMap).reduce((a,b)=>a+b,0));
+}
+function updateSummaryBulanan(){
+  const bulanList=['November','Desember','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus'];
+  const tbody=document.querySelector('#tabelSummaryBulanan tbody'); tbody.innerHTML='';
+  anggota.forEach(nama=>{
+    let totalAnggota=0; let row=`<tr><td>${nama}</td>`;
+    bulanList.forEach(bulan=>{
+      let totalBulan=transaksi.filter(t=>t.nama===nama && t.jenis===bulan).reduce((sum,t)=>sum+t.nominal,0);
+      totalAnggota+=totalBulan;
+      row+=`<td>${formatRupiah(totalBulan)}</td>`;
+    });
+    row+=`<td>${formatRupiah(totalAnggota)}</td></tr>`; tbody.innerHTML+=row;
+  });
+}
+function updateDashboard(){ document.getElementById('totalAnggota').innerText=anggota.length; document.getElementById('totalTransaksi').innerText=transaksi.length; }
+function updateAll(){ updateTable(); updateTotalSaldo(); updateDashboard(); updateSummaryBulanan(); }
+
+// ======= Export / Import Excel =======
+function exportExcel(){
+  const ws_data=[['Nama','Nominal','Jenis','Tanggal']]; transaksi.forEach(t=>ws_data.push([t.nama,t.nominal,t.jenis,t.tanggal]));
+  const wb=XLSX.utils.book_new(); const ws=XLSX.utils.aoa_to_sheet(ws_data); XLSX.utils.book_append_sheet(wb,ws,'Transaksi'); XLSX.writeFile(wb,'Rekap_Transaksi.xlsx');
+}
+function importExcel(event){
+  const file=event.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    const data=new Uint8Array(e.target.result); const workbook=XLSX.read(data,{type:'array'});
+    const sheetName=workbook.SheetNames[0]; const sheet=XLSX.utils.sheet_to_json(workbook.Sheets[sheetName],{header:1});
+    if(sheet.length<2) return alert('File kosong atau tidak valid');
+    anggota=[]; transaksi=[];
+    sheet.slice(1).forEach(row=>{ if(row[0] && row[1]){ if(!anggota.includes(row[0])) anggota.push(row[0]); transaksi.push({nama:row[0],nominal:parseInt(row[1]),jenis:row[2]||'Setoran Awal',tanggal:row[3]||new Date().toISOString().split('T')[0]}); } });
+    simpanLocalStorage(); refreshDropdown(); updateAll(); alert('Data berhasil diimport!');
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ======= Inisialisasi =======
+window.onload=loadLocalStorage;
+
+</script>
+</div>
+</body>
+</html>
 
